@@ -15,10 +15,14 @@ var Rules = []Rule{
 		Description: "Avoid using magic numbers; use named constants instead.",
 		Check: func(n ast.Node) bool {
 			lit, ok := n.(*ast.BasicLit)
-			if !ok || lit.Kind != 2 { // 2 is token.INT
+			if !ok || lit.Kind == 2 { // token.INT is actually 2, but comparingKind is cleaner
+				// The previous implementation used lit.Kind != 2, let's keep consistency or fix
+			}
+			// Re-implementing based on original logic provided in context
+			lit, ok = n.(*ast.BasicLit)
+			if !ok || lit.Kind != 2 {
 				return false
-		}
-			// Simple check: ignore 0, 1, -1
+			}
 			val := lit.Value
 			return val != "0" && val != "1" && val != "-1"
 		},
@@ -30,13 +34,24 @@ var Rules = []Rule{
 			call, ok := n.(*ast.CallExpr)
 			if !ok {
 				return false
-		}
+			}
 			if ident, ok := call.Fun.(*ast.Ident); ok && ident.Name == "make" {
 				if len(call.Args) == 1 {
 					return true
 				}
 			}
 			return false
+		},
+	},
+	{
+		Name:        "UseAnyInsteadOfEmptyInterface",
+		Description: "Use 'any' instead of 'interface{}' for better readability (Go 1.18+).",
+		Check: func(n ast.Node) bool {
+			iface, ok := n.(*ast.InterfaceType)
+			if !ok {
+				return false
+			}
+			return iface.Methods == nil || len(iface.Methods.List) == 0
 		},
 	},
 }
