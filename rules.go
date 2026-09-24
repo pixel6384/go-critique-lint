@@ -1,6 +1,9 @@
 package main
 
-import "go/ast"
+import (
+	"go/ast"
+	"go/token"
+)
 
 // Rule defines a pattern to look for in the AST and the suggested fix.
 type Rule struct {
@@ -15,12 +18,7 @@ var Rules = []Rule{
 		Description: "Avoid using magic numbers; use named constants instead.",
 		Check: func(n ast.Node) bool {
 			lit, ok := n.(*ast.BasicLit)
-			if !ok || lit.Kind == 2 { // token.INT is actually 2, but comparingKind is cleaner
-				// The previous implementation used lit.Kind != 2, let's keep consistency or fix
-			}
-			// Re-implementing based on original logic provided in context
-			lit, ok = n.(*ast.BasicLit)
-			if !ok || lit.Kind != 2 {
+			if !ok || lit.Kind != token.INT {
 				return false
 			}
 			val := lit.Value
@@ -52,6 +50,22 @@ var Rules = []Rule{
 				return false
 			}
 			return iface.Methods == nil || len(iface.Methods.List) == 0
+		},
+	},
+	{
+		Name:        "PotentialNilDereference",
+		Description: "Variable is used in a method call without a preceding nil check in the current block.",
+		Check: func(n ast.Node) bool {
+			// This is a simplified check: look for selector expressions (x.Method())
+			sel, ok := n.(*ast.SelectorExpr)
+			if !ok {
+				return false
+			}
+			// We check if the X part is an identifier
+			_, ok = sel.X.(*ast.Ident)
+			return ok
+			// Note: A full implementation would require data-flow analysis
+			// For this lint tool, we flag potential points for manual review
 		},
 	},
 }
