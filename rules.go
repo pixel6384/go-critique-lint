@@ -104,4 +104,19 @@ var Rules = []Rule{
 			return stmtCount > 50
 		},
 	},
+	{
+		Name:        "AvoidNestedLoops",
+		Description: "Deeply nested loops (3 or more) detected; consider extracting inner loops into a separate function.",
+		Check: func(n ast.Node, depth int) bool {
+			if depth >= 3 {
+				if _, ok := n.(*ast.ForStmt); ok {
+					return true
+				}
+				if _, ok := n.(*ast.RangeStmt); ok {
+					return true
+				}
+			}
+			return false
+		},
+	},
 }
