@@ -84,4 +84,24 @@ var Rules = []Rule{
 			return false
 		},
 	},
+	{
+		Name:        "LongFunction",
+		Description: "Function is too long; consider breaking it down into smaller functions to improve maintainability.",
+		Check: func(n ast.Node, depth int) bool {
+			fn, ok := n.(*ast.FuncDecl)
+			if !ok || fn.Body == nil {
+				return false
+			}
+			// Rough estimate of function length based on number of statements
+			stmtCount := 0
+			ast.Inspect(fn.Body, func(node ast.Node) bool {
+				if node != nil {
+					stmtCount++
+				}
+				return true
+			})
+			// Threshold of 50 AST nodes as a heuristic for "too long"
+			return stmtCount > 50
+		},
+	},
 }
