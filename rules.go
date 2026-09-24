@@ -9,14 +9,14 @@ import (
 type Rule struct {
 	Name        string
 	Description string
-	Check       func(ast.Node) bool
+	Check       func(ast.Node, int) bool
 }
 
 var Rules = []Rule{
 	{
 		Name:        "AvoidMagicNumbers",
 		Description: "Avoid using magic numbers; use named constants instead.",
-		Check: func(n ast.Node) bool {
+		Check: func(n ast.Node, depth int) bool {
 			lit, ok := n.(*ast.BasicLit)
 			if !ok || lit.Kind != token.INT {
 				return false
@@ -28,7 +28,7 @@ var Rules = []Rule{
 	{
 		Name:        "SlicePreallocation",
 		Description: "Use make([]T, 0, capacity) when the final size is known to avoid multiple allocations.",
-		Check: func(n ast.Node) bool {
+		Check: func(n ast.Node, depth int) bool {
 			call, ok := n.(*ast.CallExpr)
 			if !ok {
 				return false
@@ -44,7 +44,7 @@ var Rules = []Rule{
 	{
 		Name:        "UseAnyInsteadOfEmptyInterface",
 		Description: "Use 'any' instead of 'interface{}' for better readability (Go 1.18+).",
-		Check: func(n ast.Node) bool {
+		Check: func(n ast.Node, depth int) bool {
 			iface, ok := n.(*ast.InterfaceType)
 			if !ok {
 				return false
@@ -55,7 +55,7 @@ var Rules = []Rule{
 	{
 		Name:        "PotentialNilDereference",
 		Description: "Variable is used in a method call without a preceding nil check in the current block.",
-		Check: func(n ast.Node) bool {
+		Check: func(n ast.Node, depth int) bool {
 			sel, ok := n.(*ast.SelectorExpr)
 			if !ok {
 				return false
