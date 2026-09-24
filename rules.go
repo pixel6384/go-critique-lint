@@ -72,4 +72,16 @@ var Rules = []Rule{
 			return true
 		},
 	},
+	{
+		Name:        "DeferInLoop",
+		Description: "Avoid using 'defer' inside a loop; it may cause resource leakage as defers only execute when the function returns.",
+		Check: func(n ast.Node, depth int) bool {
+			if depth > 0 {
+				if _, ok := n.(*ast.DeferStmt); ok {
+					return true
+				}
+			}
+			return false
+		},
+	},
 }
