@@ -56,16 +56,20 @@ var Rules = []Rule{
 		Name:        "PotentialNilDereference",
 		Description: "Variable is used in a method call without a preceding nil check in the current block.",
 		Check: func(n ast.Node) bool {
-			// This is a simplified check: look for selector expressions (x.Method())
 			sel, ok := n.(*ast.SelectorExpr)
 			if !ok {
 				return false
 			}
-			// We check if the X part is an identifier
-			_, ok = sel.X.(*ast.Ident)
-			return ok
-			// Note: A full implementation would require data-flow analysis
-			// For this lint tool, we flag potential points for manual review
+			ident, ok := sel.X.(*ast.Ident)
+			if !ok {
+				return false
+			}
+			// Ignore common package names to reduce noise
+			packages := map[string]bool{"fmt": true, "os": true, "log": true, "strings": true, "strconv": true}
+			if packages[ident.Name] {
+				return false
+			}
+			return true
 		},
 	},
 }
