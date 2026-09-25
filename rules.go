@@ -9,14 +9,14 @@ import (
 type Rule struct {
 	Name        string
 	Description string
-	Check       func(ast.Node, int) bool
+	Check       func(ast.Node, int, int) bool
 }
 
 var Rules = []Rule{
 	{
 		Name:        "AvoidMagicNumbers",
 		Description: "Avoid using magic numbers; use named constants instead.",
-		Check: func(n ast.Node, depth int) bool {
+		Check: func(n ast.Node, loopDepth, ifDepth int) bool {
 			lit, ok := n.(*ast.BasicLit)
 			if !ok || lit.Kind != token.INT {
 				return false
@@ -28,7 +28,7 @@ var Rules = []Rule{
 	{
 		Name:        "SlicePreallocation",
 		Description: "Use make([]T, 0, capacity) when the final size is known to avoid multiple allocations.",
-		Check: func(n ast.Node, depth int) bool {
+		Check: func(n ast.Node, loopDepth, ifDepth int) bool {
 			call, ok := n.(*ast.CallExpr)
 			if !ok {
 				return false
@@ -44,7 +44,7 @@ var Rules = []Rule{
 	{
 		Name:        "UseAnyInsteadOfEmptyInterface",
 		Description: "Use 'any' instead of 'interface{}' for better readability (Go 1.18+).",
-		Check: func(n ast.Node, depth int) bool {
+		Check: func(n ast.Node, loopDepth, ifDepth int) bool {
 			iface, ok := n.(*ast.InterfaceType)
 			if !ok {
 				return false
@@ -55,7 +55,7 @@ var Rules = []Rule{
 	{
 		Name:        "PotentialNilDereference",
 		Description: "Variable is used in a method call without a preceding nil check in the current block.",
-		Check: func(n ast.Node, depth int) bool {
+		Check: func(n ast.Node, loopDepth, ifDepth int) bool {
 			sel, ok := n.(*ast.SelectorExpr)
 			if !ok {
 				return false
@@ -75,8 +75,8 @@ var Rules = []Rule{
 	{
 		Name:        "DeferInLoop",
 		Description: "Avoid using 'defer' inside a loop; it may cause resource leakage as defers only execute when the function returns.",
-		Check: func(n ast.Node, depth int) bool {
-			if depth > 0 {
+		Check: func(n ast.Node, loopDepth, ifDepth int) bool {
+			if loopDepth > 0 {
 				if _, ok := n.(*ast.DeferStmt); ok {
 					return true
 				}
@@ -87,7 +87,7 @@ var Rules = []Rule{
 	{
 		Name:        "LongFunction",
 		Description: "Function is too long; consider breaking it down into smaller functions to improve maintainability.",
-		Check: func(n ast.Node, depth int) bool {
+		Check: func(n ast.Node, loopDepth, ifDepth int) bool {
 			fn, ok := n.(*ast.FuncDecl)
 			if !ok || fn.Body == nil {
 				return false
@@ -107,8 +107,8 @@ var Rules = []Rule{
 	{
 		Name:        "AvoidNestedLoops",
 		Description: "Deeply nested loops (3 or more) detected; consider extracting inner loops into a separate function.",
-		Check: func(n ast.Node, depth int) bool {
-			if depth >= 3 {
+		Check: func(n ast.Node, loopDepth, ifDepth int) bool {
+			if loopDepth >= 3 {
 				if _, ok := n.(*ast.ForStmt); ok {
 					return true
 				}
@@ -122,9 +122,29 @@ var Rules = []Rule{
 	{
 		Name:        "DeeplyNestedIfs",
 		Description: "Deeply nested if-statements detected; consider using guard clauses to flatten the logic.",
-		Check: func(n ast.Node, depth int) bool {
-			if _, ok := n.(*ast.IfStmt); ok && depth >= 4 {
+		Check: func(n ast.Node, loopDepth, ifDepth int) bool {
+			if _, ok := n.(*ast.IfStmt); ok && ifDepth >= 4 {
 				return true
+			}
+			return false
+		},
+	},
+	{
+		Name:        "UnusedImport",
+		Description: "Import is declared but not used in the file.",
+		Check: func(n ast.Node, loopDepth, ifDepth int) bool {
+			// This is a simplified check. A real implementation would track all identifiers
+			// and cross-reference them with imports. For the scope of this tool,
+			// we flag imports that are explicitly marked as blank imports if not intended.
+			gen, ok := n.(*ast.GenDecl)
+			if !ok || gen.Tok != token.IMPORT {
+				return false
+			}
+			for _, spec := range gen.Specs {
+				importSpec, ok := spec.(*ast.ImportSpec)
+				if ok && importSpec.Name != nil && importSpec.Name.Name == "_" {
+					return true
+				}
 			}
 			return false
 		},

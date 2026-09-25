@@ -15,6 +15,7 @@ type visitor struct {
 	fset      *token.FileSet
 	issues    []Issue
 	loopDepth int
+	ifDepth   int
 }
 
 func (v *visitor) Visit(n ast.Node) ast.Visitor {
@@ -22,14 +23,16 @@ func (v *visitor) Visit(n ast.Node) ast.Visitor {
 		return nil
 	}
 
-	// Track loop depth
+	// Track depths
 	switch n.(type) {
 	case *ast.ForStmt, *ast.RangeStmt:
 		v.loopDepth++
+	case *ast.IfStmt:
+		v.ifDepth++
 	}
 
 	for _, rule := range Rules {
-		if rule.Check(n, v.loopDepth) {
+		if rule.Check(n, v.loopDepth, v.ifDepth) {
 			v.issues = append(v.issues, Issue{
 				Pos:  v.fset.Position(n.Pos()),
 				Rule: rule.Name,
@@ -38,36 +41,35 @@ func (v *visitor) Visit(n ast.Node) ast.Visitor {
 		}
 	}
 
-	// Capture the current depth to decrement after children are visited
-	currentDepth := v.loopDepth
-	
-	// To correctly decrement loopDepth, we need to wrap the traversal
-	// or handle it in a way that happens after children. 
-	// Since we return v, ast.Walk continues. To decrement, we must 
-	// wrap the children visitation. A simpler way for this tool's scope
-	// is to use a custom visitor for loops.
-
+	// Handle depth decrementing via wrapping visitors
 	if _, ok := n.(*ast.ForStmt); ok {
-		return &loopDecrementer{v, currentDepth}
+		return &depthDecrementer{v, "loop"}
 	}
 	if _, ok := n.(*ast.RangeStmt); ok {
-		return &loopDecrementer{v, currentDepth}
+		return &depthDecrementer{v, "loop"}
+	}
+	if _, ok := n.(*ast.IfStmt); ok {
+		return &depthDecrementer{v, "if"}
 	}
 
 	return v
 }
 
-type loopDecrementer struct {
+type depthDecrementer struct {
 	*visitor
-	initialDepth int
+	typeOfDepth string
 }
 
-func (ld *loopDecrementer) Visit(n ast.Node) ast.Visitor {
+func (dd *depthDecrementer) Visit(n ast.Node) ast.Visitor {
 	if n == nil {
-		ld.visitor.loopDepth = ld.initialDepth
+		if dd.typeOfDepth == "loop" {
+			dd.visitor.loopDepth--
+		} else {
+			dd.visitor.ifDepth--
+		}
 		return nil
 	}
-	return ld.visitor.Visit(n)
+	return dd.visitor.Visit(n)
 }
 
 func AnalyzeFile(fset *token.FileSet, file *ast.File) []Issue {
