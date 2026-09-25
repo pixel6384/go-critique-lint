@@ -34,18 +34,20 @@ var Rules = []Rule{
 				return false
 			}
 			if ident, ok := call.Fun.(*ast.Ident); ok && ident.Name == "make" {
-			// Check if the first argument is a slice type
-			if len(call.Args) > 0 {
-				if _, ok := call.Args[0].(*ast.CompositeLit); ok {
-					// Simplification: we check if it has only 1 arg and is likely a slice
+			// We look for make calls with 1 or 2 arguments that are likely slices
+			if len(call.Args) >= 1 && len(call.Args) <= 2 {
+				if _, ok := call.Args[0].(*ast.ArrayType); ok {
+					// If it has 1 arg, it's definitely missing capacity
 					if len(call.Args) == 1 {
 						return true
 					}
+					// If it has 2 args, we check if the second arg is 0 (often indicates lack of capacity hint)
+					if len(call.Args) == 2 {
+						if lit, ok := call.Args[1].(*ast.BasicLit); ok && lit.Value == "0" {
+						return true
+					}
+					}
 				}
-			}
-			// If it's a make call with exactly 1 argument, it's often a map or a slice without capacity
-			if len(call.Args) == 1 {
-				return true
 			}
 			}
 			return false
@@ -194,6 +196,21 @@ var Rules = []Rule{
 				return true
 			}
 			return false
+		},
+	},
+	{
+		Name:        "BooleanComparison",
+		Description: "Comparing a boolean value to true or false is non-idiomatic; use the boolean variable directly.",
+		Check: func(n ast.Node, loopDepth, ifDepth int) bool {
+			bin, ok := n.(*ast.BinaryExpr)
+			if !ok || (bin.Op != token.EQL && bin.Op != token.NEQ) {
+				return false
+			}
+			isBoolLit := func(e ast.Expr) bool {
+				lit, ok := e.(*ast.Ident)
+				return ok && (lit.Name == "true" || lit.Name == "false")
+			}
+			return isBoolLit(bin.X) || isBoolLit(bin.Y)
 		},
 	},
 }
