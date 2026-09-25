@@ -149,4 +149,27 @@ var Rules = []Rule{
 			return false
 		},
 	},
+	{
+		Name:        "RedundantElse",
+		Description: "Redundant else block detected after a return statement; consider removing it to flatten the code.",
+		Check: func(n ast.Node, loopDepth, ifDepth int) bool {
+			ifStmt, ok := n.(*ast.IfStmt)
+			if !ok || ifStmt.Else == nil {
+				return false
+			}
+			// Check if the 'if' block ends with a return statement
+			endsWithReturn := false
+			if ifStmt.Body != nil {
+				for i := len(ifStmt.Body.List) - 1; i >= 0; i-- {
+					stmt := ifStmt.Body.List[i]
+					if _, ok := stmt.(*ast.ReturnStmt); ok {
+						endsWithReturn = true
+						break
+					}
+					break
+				}
+			}
+			return endsWithReturn
+		},
+	},
 }
