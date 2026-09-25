@@ -119,4 +119,14 @@ var Rules = []Rule{
 			return false
 		},
 	},
+	{
+		Name:        "DeeplyNestedIfs",
+		Description: "Deeply nested if-statements detected; consider using guard clauses to flatten the logic.",
+		Check: func(n ast.Node, depth int) bool {
+			if _, ok := n.(*ast.IfStmt); ok && depth >= 4 {
+				return true
+			}
+			return false
+		},
+	},
 }
