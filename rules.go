@@ -34,9 +34,19 @@ var Rules = []Rule{
 				return false
 			}
 			if ident, ok := call.Fun.(*ast.Ident); ok && ident.Name == "make" {
-				if len(call.Args) == 1 {
-					return true
+			// Check if the first argument is a slice type
+			if len(call.Args) > 0 {
+				if _, ok := call.Args[0].(*ast.CompositeLit); ok {
+					// Simplification: we check if it has only 1 arg and is likely a slice
+					if len(call.Args) == 1 {
+						return true
+					}
 				}
+			}
+			// If it's a make call with exactly 1 argument, it's often a map or a slice without capacity
+			if len(call.Args) == 1 {
+				return true
+			}
 			}
 			return false
 		},
@@ -170,6 +180,20 @@ var Rules = []Rule{
 				}
 			}
 			return endsWithReturn
+		},
+	},
+	{
+		Name:        "EmptyIfBlock",
+		Description: "Empty if-block detected; ensure this is intentional and not a leftover from debugging.",
+		Check: func(n ast.Node, loopDepth, ifDepth int) bool {
+			ifStmt, ok := n.(*ast.IfStmt)
+			if !ok {
+				return false
+			}
+			if ifStmt.Body == nil || len(ifStmt.Body.List) == 0 {
+				return true
+			}
+			return false
 		},
 	},
 }
