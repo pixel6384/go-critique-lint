@@ -233,4 +233,46 @@ var Rules = []Rule{
 			return name == "Println" || name == "Printf" || name == "Print"
 		},
 	},
+	{
+		Name:        "IotaUsage",
+		Description: "When using iota, it's often better to explicitly define the type for the first constant in the group.",
+		Check: func(n ast.Node, loopDepth, ifDepth int) bool {
+			gen, ok := n.(*ast.GenDecl)
+			if !ok || gen.Tok != token.CONST {
+				return false
+			}
+			for i, spec := range gen.Specs {
+				valueSpec, ok := spec.(*ast.ValueSpec)
+				if !ok || len(valueSpec.Values) == 0 {
+					continue
+				}
+				// Check if the first assignment uses iota but doesn't have a type explicitly declared in the spec
+				if i == 0 && valueSpec.Type == nil {
+					if ident, ok := valueSpec.Values[0].(*ast.Ident); ok && ident.Name == "iota" {
+						return true
+					}
+				}
+			}
+			return false
+		},
+	},
+	{
+		Name:        "ComplexCondition",
+		Description: "If-condition is too complex; consider extracting it into a boolean variable or a helper function for clarity.",
+		Check: func(n ast.Node, loopDepth, ifDepth int) bool {
+			ifStmt, ok := n.(*ast.IfStmt)
+			if !ok {
+				return false
+			}
+			count := 0
+			ast.Inspect(ifStmt.Cond, func(node ast.Node) bool {
+				if node != nil {
+					count++
+				}
+				return true
+			})
+			// If the condition expression has more than 6 AST nodes, it's likely too complex
+			return count > 6
+		},
+	},
 }
