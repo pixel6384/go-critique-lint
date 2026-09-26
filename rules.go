@@ -275,4 +275,22 @@ var Rules = []Rule{
 			return count > 6
 		},
 	},
+	{
+		Name:        "AvoidTooManyArguments",
+		Description: "Function has too many arguments (more than 5); consider using a configuration struct instead.",
+		Check: func(n ast.Node, loopDepth, ifDepth int) bool {
+			fn, ok := n.(*ast.FuncDecl)
+			if !ok || fn.Type.Params == nil {
+				return false
+			}
+			argCount := 0
+			for _, field := range fn.Type.Params.List {
+				argCount += len(field.Names)
+				if len(field.Names) == 0 {
+					argCount++
+				}
+			}
+			return argCount > 5
+		},
+	},
 }
