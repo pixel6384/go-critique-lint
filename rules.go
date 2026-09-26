@@ -77,7 +77,7 @@ var Rules = []Rule{
 				return false
 			}
 			// Ignore common package names to reduce noise
-			packages := map[string]bool{"fmt": true, "os": true, "log": true, "strings": true, "strconv": true}
+			packages := map[string]bool{"fmt": true, "os": true, "log": true, "strings": true, "strconv": true, "context": true, "time": true}
 			if packages[ident.Name] {
 				return false
 			}
@@ -211,6 +211,26 @@ var Rules = []Rule{
 				return ok && (lit.Name == "true" || lit.Name == "false")
 			}
 			return isBoolLit(bin.X) || isBoolLit(bin.Y)
+		},
+	},
+	{
+		Name:        "ProductionPrint",
+		Description: "Using fmt.Print/Printf/Println is generally discouraged in production; use a structured logger instead.",
+		Check: func(n ast.Node, loopDepth, ifDepth int) bool {
+			call, ok := n.(*ast.CallExpr)
+			if !ok {
+				return false
+			}
+			sel, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok {
+				return false
+			}
+			ident, ok := sel.X.(*ast.Ident)
+			if !ok || ident.Name != "fmt" {
+				return false
+			}
+			name := sel.Sel.Name
+			return name == "Println" || name == "Printf" || name == "Print"
 		},
 	},
 }
